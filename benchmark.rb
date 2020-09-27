@@ -113,13 +113,26 @@ module Benchmark
 		cipher.key = key
 		decrypted_data = cipher.update(encrypted_data) << cipher.final
 
-		[encrypted_data.bytesize, decrypted_data.bytesize]
+		ALL_WORDS == decrypted_data
 	end
 
 	def self.fibonacci(n)
 		a, b, i = 1, 0, -1
 		a, b = b, a + b while (i += 1) < n
 		a
+	end
+
+	def self.fpu_test(n)
+		x, n, i = 1.0, n + 1.0, 0.0
+
+		while (i += 1.0) < n
+			x *= Math.sin(i)
+			x /= i
+			x += Math.sin(i)
+			x -= Math.cos(i)
+		end
+
+		x
 	end
 end
 
@@ -168,6 +181,10 @@ if __FILE__ == $0
 
 	Benchmark.initialize_wordlist
 	standard_benchmark(message_head: 'CPU Blowfish Test', message_body: 'CPU Blowfish') do
+		Benchmark.blowfish
+	end
+
+	standard_benchmark(message_head: 'FPU Test', message_body: 'FPU Math') do
 		Benchmark.blowfish
 	end
 
