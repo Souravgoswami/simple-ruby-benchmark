@@ -1,6 +1,8 @@
+#!/usr/bin/ruby -w
+
 # Define a pad method on float class, which returns a string of with padded zeroes
 Float.define_method(:pad) do |digits = 3|
-	self.round(digits).to_s.then do |x|
+	round(digits).to_s.then do |x|
 		x.split(?..freeze).then { |y| "#{y[0]}.#{(y[1].length < digits ? y[1] + '0'.freeze.*(digits - y[1].length).freeze : y[1])}" }
 	end
 end
@@ -48,18 +50,28 @@ module Benchmark
 
 	# Intialize anagram words before anagram hunting
 	SORTED_WORDS, WORDS = [], []
+	ALL_WORDS = ''
 
-	def self.initialize_words
-		if SORTED_WORDS.empty?
-			word_file = File.join(__dir__, 'wordlist')
+	# Should be run prior to blowfish, and anagram test
+	def self.initialize_wordlist(word_file = File.join(__dir__, 'wordlist'))
+		if ALL_WORDS.empty?
 			unless File.exist?(word_file)
 				puts ":: Downloading the words..."
 				require 'net/https'
-
 				IO.write(word_file, Net::HTTP.get(URI('https://raw.githubusercontent.com/Souravgoswami/simple-ruby-benchmark/master/wordlist')))
 			end
 
-			IO.readlines(word_file).each(&:downcase!).tap(&:uniq!).each do |w|
+			ALL_WORDS.replace(IO.read(word_file))
+		end
+	end
+
+	# Should be run prior to anagram test
+	def self.initialize_words
+		if SORTED_WORDS.empty?
+			word_file = File.join(__dir__, 'wordlist')
+			initialize_wordlist(word_file)
+
+			ALL_WORDS.split(?\n).each(&:downcase!).tap(&:uniq!).each do |w|
 				w.strip!
 
 				unless w[/[^a-z]/]
@@ -82,6 +94,28 @@ module Benchmark
 		x << WORDS[i] if SORTED_WORDS[i] == term while SORTED_WORDS[i += 1]
 		x
 	end
+
+	def self.blowfish
+		word_file = File.join(__dir__, 'wordlist')
+		initialize_wordlist(word_file)
+
+		require 'openssl'
+		cipher = OpenSSL::Cipher.new('bf-cbc').tap(&:encrypt)
+		cipher.key = key = 16.times.map { [rand(97..122).chr, rand(0..9)].sample }.join
+		encrypted_data = cipher.update(ALL_WORDS) << cipher.final
+
+		cipher = OpenSSL::Cipher.new('bf-cbc').tap(&:decrypt)
+		cipher.key = key
+		decrypted_data = cipher.update(encrypted_data) << cipher.final
+
+		[encrypted_data.bytesize, decrypted_data.bytesize]
+	end
+
+	def self.fibonacci(n)
+		a, b, i = 1, 0, -1
+		a, b = b, a + b while (i += 1) < n
+		a
+	end
 end
 
 # Benchmark unless required in other files
@@ -96,55 +130,59 @@ if __FILE__ == $0
 	puts "\e[1;38;2;255;200;0m:: Please stop all your apps, perhaps reboot your system, and run the benchmark\e[0m"
 	puts "\e[1;38;2;255;200;0m:: Don't even move your mouse during the benchmark for consistent result!\e[0m"
 
+	str = 'Ready?'
+	anim_delay = 1.0 / (STDOUT.winsize[1])
+	anims = %w(| / - \\)
 
-	###################################################
+	STDOUT.winsize[1].-(str.length + 4).times do |x|
+		print "\e[2K#{anims.rotate![0]} #{str}#{?..*(x)}\r"
+		sleep anim_delay
+	end
 
-	GC.compact if GC.respond_to?(:compact)
-	sleep 1
-	puts "Hunting for anagrams"
+	puts
+
+	$all_test_time = 0
+
+	def standard_benchmark(iterations: 10, message_head:, message_body:)
+		GC.compact if GC.respond_to?(:compact)
+		puts message_head
+
+		time = 0
+		iterations.times do |x|
+			time += Benchmark.benchmark!(":: #{message_body} Iteration #{x.next}:") { yield }
+		end
+
+		$all_test_time += time
+
+		puts "Total time taken: #{time.pad(3)}s"
+		puts ?- * STDOUT.winsize[1]
+
+		sleep 1
+	end
+
+	Benchmark.initialize_wordlist
+	standard_benchmark(message_head: 'CPU Blowfish Test', message_body: 'CPU Blowfish') do
+		Benchmark.blowfish
+	end
+
+	standard_benchmark(message_head: 'CPU Fibonacci Test', message_body: 'CPU Fibonacci') do
+		Benchmark.fibonacci(100_000)
+	end
+
 	Benchmark.initialize_words
-
-	time = 0
-	10.times do |x|
-		time += Benchmark.benchmark!(":: Anagram Search Iteration #{x.next}:") do
-			%w(esalr rotets nmsee overt laemsens terganil caahimglnlooypr ealrsdo earsengt).each do |word|
-				Benchmark.anagram_hunt(word)
-			end
+	standard_benchmark(message_head: 'CPU Anagram Hunt', message_body: 'CPU Anagram') do
+		%w(esalr rotets nmsee overt laemsens terganil caahimglnlooypr ealrsdo earsengt).each do |word|
+			Benchmark.anagram_hunt(word)
 		end
 	end
 
-	require 'io/console'
-
-	puts "Total time taken: #{time.pad(3)}s"
-	puts ?- * STDOUT.winsize[1]
-
-	###################################################
-
-	GC.compact if GC.respond_to?(:compact)
-	sleep 1
-	puts "Calculating 8,000,000 prime numbers"
-	total_time = 0
-
-	time = 0
-	10.times do |x|
-		time += Benchmark.benchmark!(":: Prime Iteration #{x.next}:") { Benchmark.prime(8_000_000) }
+	standard_benchmark(message_head: 'CPU 8 Million Prime Numbers', message_body: 'Prime Numbers') do
+		Benchmark.prime(8_000_000)
 	end
 
-	puts "Total time taken: #{time.pad(3)}s"
-	puts ?- * STDOUT.winsize[1]
-
-	###################################################
-
-	GC.compact if GC.respond_to?(:compact)
-	sleep 1
-	puts "Calculating 5000 digits of Pi"
-	total_time = 0
-
-	time = 0
-	10.times do |x|
-		time += Benchmark.benchmark!(":: Pi Iteration #{x.next}:") { Benchmark.pi(5000) }
+	standard_benchmark(message_head: 'CPU 3k Pi Digits', message_body: '3K Pi Digits') do
+		Benchmark.pi(3000)
 	end
 
-	puts "Total time taken: #{time.pad(3)}s"
-	puts ?- * STDOUT.winsize[1]
+	puts "All test time: #{$all_test_time}s"
 end
