@@ -1,4 +1,9 @@
-#!/usr/bin/ruby -w
+#!/usr/bin/env ruby
+# Ruby < 2.4 is not supported
+puts "Ruby 2.5+ is needed to run the tests. You are using #{RUBY_VERSION}" if RUBY_VERSION.to_s.split(?.).first(2).join.to_i < 24
+
+# Define methods if used Ruby 2.5
+Kernel.define_method(:then) { |&block| block === self }
 
 # Define a pad method on float class, which returns a string of with padded zeroes
 Float.define_method(:pad) do |digits = 3|
@@ -123,6 +128,7 @@ if __FILE__ == $0
 	require 'io/console'
 	puts "\e[1;38;2;255;80;80m:: Details:\e[0m"
 	puts "Ruby Version: #{RUBY_VERSION} (#{RUBY_PLATFORM})\n\n"
+	puts "CC: #{RbConfig::CONFIG['CC']}"
 	puts "CFLAGS: #{RbConfig::CONFIG['CFLAGS']}"
 
 	puts ?- * STDOUT.winsize[1]
