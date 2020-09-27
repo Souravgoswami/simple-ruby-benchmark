@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# Ruby < 2.4 is not supported
+# Ruby < 2.5 is not supported
 puts "Ruby 2.5+ is needed to run the tests. You are using #{RUBY_VERSION}" if RUBY_VERSION.to_s.split(?.).first(2).join.to_i < 24
 
 # Define methods if used Ruby 2.5
