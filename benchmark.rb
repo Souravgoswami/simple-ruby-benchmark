@@ -1,14 +1,17 @@
-#!/usr/bin/env ruby
-# Ruby < 2.5 is not supported
-puts "Ruby 2.5+ is needed to run the tests. You are using #{RUBY_VERSION}" if RUBY_VERSION.to_s.split(?.).first(2).join.to_i < 24
+#!/usr/bin/ruby -w
+
+# Ruby < 2.1 is not supported
+abort "Ruby 2.1+ is needed to run the tests. You are using Ruby #{RUBY_VERSION}" if RUBY_VERSION.to_s.split(?.).first(2).join.to_i < 21
 
 # Define methods if used Ruby 2.5
-Kernel.define_method(:then) { |&block| block === self }
+Kernel.class_exec { define_method(:then) { |&block| block === self } } unless Kernel.respond_to?(:then)
 
 # Define a pad method on float class, which returns a string of with padded zeroes
-Float.define_method(:pad) do |digits = 3|
-	round(digits).to_s.then do |x|
-		x.split(?..freeze).then { |y| "#{y[0]}.#{(y[1].length < digits ? y[1] + '0'.freeze.*(digits - y[1].length).freeze : y[1])}" }
+class Float
+	def pad(digits = 3)
+		round(digits).to_s.then do |x|
+			x.split(?..freeze).then { |y| "#{y[0]}.#{(y[1].length < digits ? y[1] + '0'.freeze.*(digits - y[1].length).freeze : y[1])}" }
+		end
 	end
 end
 
@@ -126,10 +129,10 @@ module Benchmark
 		x, n, i = 1.0, n + 1.0, 0.0
 
 		while (i += 1.0) < n
-			x *= Math.sin(i)
+			x *= -1
 			x /= i
-			x += Math.sin(i)
-			x -= Math.cos(i)
+			x += i.%(2.0).==(0.0) ? 1.0 : -1.0
+			x -= i.%(2.0).==(0.0) ? -1.0 : 1.0
 		end
 
 		x
@@ -149,18 +152,20 @@ if __FILE__ == $0
 	puts "\e[1;38;2;255;200;0m:: Please stop all your apps, perhaps reboot your system, and run the benchmark\e[0m"
 	puts "\e[1;38;2;255;200;0m:: Don't even move your mouse during the benchmark for consistent result!\e[0m"
 
-	str = 'Ready?'
-	anim_delay = 1.0 / (STDOUT.winsize[1])
+	anim_time = Time.now
+	delay = 3
+	anim_delay = delay.to_f / (STDOUT.winsize[1])
+
 	anims = %w(| / - \\)
 
-	STDOUT.winsize[1].-(str.length + 4).times do |x|
-		print "\e[2K#{anims.rotate![0]} #{str}#{?..*(x)}\r"
+	STDOUT.winsize[1].-(12).times do |x|
+		print "\e[2K#{anims.rotate![0]} #{"Ready? (#{delay - Time.now.-(anim_time).to_i.next})"}#{?..*(x)}\r"
 		sleep anim_delay
 	end
 
 	puts
 
-	$all_test_time = 0
+	$all_test_time, $total_tests = 0, 0
 
 	def standard_benchmark(iterations: 10, message_head:, message_body:)
 		GC.compact if GC.respond_to?(:compact)
@@ -172,6 +177,7 @@ if __FILE__ == $0
 		end
 
 		$all_test_time += time
+		$total_tests += 1
 
 		puts "Total time taken: #{time.pad(3)}s"
 		puts ?- * STDOUT.winsize[1]
@@ -185,11 +191,11 @@ if __FILE__ == $0
 	end
 
 	standard_benchmark(message_head: 'FPU Test', message_body: 'FPU Math') do
-		Benchmark.blowfish
+		Benchmark.fpu_test(2_000_000)
 	end
 
 	standard_benchmark(message_head: 'CPU Fibonacci Test', message_body: 'CPU Fibonacci') do
-		Benchmark.fibonacci(100_000)
+		Benchmark.fibonacci(200_000)
 	end
 
 	Benchmark.initialize_words
@@ -199,13 +205,13 @@ if __FILE__ == $0
 		end
 	end
 
-	standard_benchmark(message_head: 'CPU 8 Million Prime Numbers', message_body: 'Prime Numbers') do
-		Benchmark.prime(8_000_000)
+	standard_benchmark(message_head: 'CPU 2 Million Prime Numbers', message_body: 'Prime Numbers') do
+		Benchmark.prime(2_000_000)
 	end
 
-	standard_benchmark(message_head: 'CPU 3k Pi Digits', message_body: '3K Pi Digits') do
-		Benchmark.pi(3000)
+	standard_benchmark(message_head: 'CPU 2k Pi Digits', message_body: '2K Pi Digits') do
+		Benchmark.pi(2000)
 	end
 
-	puts "All test time: #{$all_test_time}s"
+	puts "Tests: #{$total_tests} | Total time: #{$all_test_time.round(2)}s | Avg Test Time: #{$all_test_time.fdiv($total_tests).round(2)}s"
 end
