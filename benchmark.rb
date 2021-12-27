@@ -21,13 +21,18 @@ module Benchmark
 	def self.benchmark!(string = nil, &block)
 		str = string ? "#{string}" : "Time taken".freeze
 
-		t = Time.now
+		t, cpu_t = Process.clock_gettime(Process::CLOCK_MONOTONIC), Process.times
 		block.call(self)
-		total_time = Time.now - t
-		total_time_rounded = total_time.round(3)
+		t2, cpu_t2 = Process.clock_gettime(Process::CLOCK_MONOTONIC), Process.times
 
-		puts "#{str} #{total_time_rounded.pad}s"
-		total_time_rounded
+		total_time = t2 - t
+		cpu_time = cpu_t2.utime.+(cpu_t2.stime).-(cpu_t.utime + cpu_t.stime)
+
+		puts "#{str} Real Time: #{total_time.pad}s | CPU Time: #{cpu_time.pad}"
+		[
+			total_time.round(3),
+			cpu_time.round(3)
+		]
 	end
 
 	# Calculate prime
@@ -163,21 +168,27 @@ if __FILE__ == $0
 
 	puts
 
-	$all_test_time, $total_tests = 0, 0
+	$all_test_real_time, $all_test_cpu_time, $total_tests = 0, 0, 0
 
 	def standard_benchmark(iterations: 10, message_head:, message_body:)
 		GC.compact if GC.respond_to?(:compact)
 		puts message_head
 
-		time = 0
+		real_time = 0
+		cpu_time = 0
+
 		iterations.times do |x|
-			time += Benchmark.benchmark!(":: #{message_body} Iteration #{x.next}:") { yield }
+			times = Benchmark.benchmark!(":: #{message_body} Iteration #{x.next}:") { yield }
+			real_time += times[0]
+			cpu_time += times[1]
 		end
 
-		$all_test_time += time
+		$all_test_real_time += real_time
+		$all_test_cpu_time += cpu_time
+
 		$total_tests += 1
 
-		puts "Total time taken: #{time.pad(3)}s"
+		puts "Total: Real Time #{real_time.pad(3)}s | CPU Time #{cpu_time.pad(3)}s"
 		puts ?- * STDOUT.winsize[1]
 
 		sleep 1
@@ -211,5 +222,7 @@ if __FILE__ == $0
 		Benchmark.pi(2000)
 	end
 
-	puts "Tests: #{$total_tests} | Total time: #{$all_test_time.round(2)}s | Avg Test Time: #{$all_test_time.fdiv($total_tests).round(2)}s"
+	puts "Total Tests: #{$total_tests}"
+	puts "Total Test CPU Time: #{$all_test_cpu_time.round(3)}s | Avg Test CPU Time: #{$all_test_cpu_time.fdiv($total_tests).round(3)}s"
+	puts "Total Test Real Time: #{$all_test_real_time.round(3)}s | Avg Test Real Time: #{$all_test_real_time.fdiv($total_tests).round(3)}s"
 end
