@@ -9,9 +9,7 @@ Kernel.class_exec { define_method(:then) { |&block| block === self } } unless Ke
 # Define a pad method on float class, which returns a string of with padded zeroes
 class Float
 	def pad(digits = 3)
-		round(digits).to_s.then do |x|
-			x.split(?..freeze).then { |y| "#{y[0]}.#{(y[1].length < digits ? y[1] + '0'.freeze.*(digits - y[1].length).freeze : y[1])}" }
-		end
+		"%0.#{digits}f" % self
 	end
 end
 
