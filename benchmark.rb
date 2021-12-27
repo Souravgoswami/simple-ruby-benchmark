@@ -2,6 +2,10 @@
 #
 # Supports Ruby 2.1 and above
 #
+# Tested Ruby till date: 2.1.9 to 3.1.0
+# [ All newly tested ruby may not be added above in the future ]
+# Open an issue in case your bleeding edge MRuby can't run this code.
+#
 # You can copy paste this code to a simple file.
 # Install ruby.
 # Run the file you pasted the code with ruby.
