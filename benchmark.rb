@@ -150,6 +150,12 @@ module Benchmark
 
 		x
 	end
+
+	def self.string_concat(n)
+		str, i, n = '', 0, n + 1
+		str << 'c' while (i += 1) < n
+		nil
+	end
 end
 
 # Benchmark unless required in other files
@@ -230,6 +236,10 @@ if __FILE__ == $0
 
 	standard_benchmark(message_head: 'CPU 2k Pi Digits', message_body: '2K Pi Digits') do
 		Benchmark.pi(2000)
+	end
+
+	standard_benchmark(message_head: 'String Concat 1M', message_body: 'String Concat 1M') do
+		Benchmark.string_concat(1_000_000)
 	end
 
 	puts "Total Tests: #{$total_tests}"
