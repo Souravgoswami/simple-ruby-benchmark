@@ -1,7 +1,13 @@
 #!/usr/bin/ruby -w
-
-# Ruby < 2.1 is not supported
-abort "Ruby 2.1+ is needed to run the tests. You are using Ruby #{RUBY_VERSION}" if RUBY_VERSION.to_s.split(?.).first(2).join.to_i < 21
+#
+# Supports Ruby 2.1 and above
+#
+# You can copy paste this code to a simple file.
+# Install ruby.
+# Run the file you pasted the code with ruby.
+#
+# This will downloads a 5 MB word file if not present
+# Delete this code once you're done!
 
 # Define methods if used Ruby 2.5
 Kernel.class_exec { define_method(:then) { |&block| block === self } } unless Kernel.respond_to?(:then)
